@@ -19,18 +19,42 @@ class CacheService:
     def __init__(self):
         self.redis_client = None
         self.redis_enabled = False
+        self.redis_connection_tested = False
         self.cache_dir = Path(os.getenv("CACHE_DIR", "./cache"))
         self.cache_dir.mkdir(exist_ok=True)
         
-        # Initialize Redis if available
-        redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-        try:
-            self.redis_client = redis.from_url(redis_url, decode_responses=True)
-            self.redis_enabled = True
-            logger.info("Redis cache enabled")
-        except Exception as e:
-            logger.warning(f"Redis not available, using file cache: {str(e)}")
+        # Initialize Redis only if explicitly configured
+        redis_url = os.getenv("REDIS_URL")
+        if redis_url:
+            try:
+                self.redis_client = redis.from_url(redis_url, decode_responses=True)
+                # Note: Connection is tested lazily on first use
+                logger.info("Redis cache configured (will test connection on first use)")
+            except Exception as e:
+                logger.warning(f"Redis configuration error, using file cache: {str(e)}")
+                self.redis_client = None
+        else:
+            logger.info("Redis not configured, using file cache only")
+    
+    async def _test_redis_connection(self):
+        """Test Redis connection and enable/disable accordingly"""
+        if self.redis_connection_tested:
+            return
+        
+        self.redis_connection_tested = True
+        
+        if not self.redis_client:
             self.redis_enabled = False
+            return
+        
+        try:
+            # Test connection by pinging Redis
+            await self.redis_client.ping()
+            self.redis_enabled = True
+            logger.info("Redis cache enabled and connected")
+        except Exception as e:
+            self.redis_enabled = False
+            logger.info(f"Redis not available, using file cache only: {str(e)}")
     
     async def get(self, key: str) -> Optional[Any]:
         """
@@ -42,6 +66,9 @@ class CacheService:
         Returns:
             Cached value or None
         """
+        # Test Redis connection on first use
+        await self._test_redis_connection()
+        
         # Try Redis first
         if self.redis_enabled and self.redis_client:
             try:
@@ -50,6 +77,8 @@ class CacheService:
                     return json.loads(value)
             except Exception as e:
                 logger.warning(f"Redis get error: {str(e)}")
+                # Disable Redis on persistent errors
+                self.redis_enabled = False
         
         # Fallback to file cache
         cache_file = self.cache_dir / f"{key}.json"
@@ -75,6 +104,9 @@ class CacheService:
         Returns:
             True if successful
         """
+        # Test Redis connection on first use
+        await self._test_redis_connection()
+        
         json_value = json.dumps(value)
         
         # Try Redis first

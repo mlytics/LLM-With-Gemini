@@ -130,7 +130,13 @@ Generate questions now:"""
             error_msg = str(e)
             if "location is not supported" in error_msg.lower():
                 logger.warning("Gemini API not available in this region. Location restriction detected.")
-                raise ValueError("Gemini API is not available in your region. Please use VPN or deploy to a supported region (USA/Europe). For testing, use demo_mock_server.py instead.")
+                raise ValueError("Gemini API is not available in your region. Please use VPN or deploy to a supported region (USA/Europe).")
+            raise
+        except (google_exceptions.ServiceUnavailable, google_exceptions.RetryError) as e:
+            error_msg = str(e)
+            if "timeout" in error_msg.lower() or "connection timed out" in error_msg.lower() or "failed to connect" in error_msg.lower():
+                logger.error(f"Connection timeout to Gemini API: {error_msg}")
+                raise ValueError("Cannot connect to Gemini API. Please check your network connection, firewall settings, or use VPN if Google services are blocked in your region.")
             raise
         except Exception as e:
             logger.error(f"Error generating questions: {str(e)}", exc_info=True)
@@ -205,7 +211,13 @@ Answer:"""
             error_msg = str(e)
             if "location is not supported" in error_msg.lower():
                 logger.warning("Gemini API not available in this region. Location restriction detected.")
-                raise ValueError("Gemini API is not available in your region. Please use VPN or deploy to a supported region (USA/Europe). For testing, use demo_mock_server.py instead.")
+                raise ValueError("Gemini API is not available in your region. Please use VPN or deploy to a supported region (USA/Europe).")
+            raise
+        except (google_exceptions.ServiceUnavailable, google_exceptions.RetryError) as e:
+            error_msg = str(e)
+            if "timeout" in error_msg.lower() or "connection timed out" in error_msg.lower() or "failed to connect" in error_msg.lower():
+                logger.error(f"Connection timeout to Gemini API: {error_msg}")
+                raise ValueError("Cannot connect to Gemini API. Please check your network connection, firewall settings, or use VPN if Google services are blocked in your region.")
             raise
         except Exception as e:
             logger.error(f"Error generating answer: {str(e)}", exc_info=True)

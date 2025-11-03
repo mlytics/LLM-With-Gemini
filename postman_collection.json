@@ -29,7 +29,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"inputs\": {\n    \"url\": \"https://example.com/article\",\n    \"context\": \"This article discusses the impact of artificial intelligence on modern business operations and how companies are adapting to new technologies.\",\n    \"lang\": \"zh-tw\"\n  },\n  \"user\": \"{{user}}\",\n  \"type\": \"answer_page\"\n}"
+          "raw": "{\n  \"inputs\": {\n    \"url\": \"https://ai.mlyticsaigc.com/\",\n    \"context\": \"This article discusses the impact of artificial intelligence on modern business operations and how companies are adapting to new technologies.\",\n    \"lang\": \"zh-tw\"\n  },\n  \"user\": \"{{user}}\",\n  \"type\": \"answer_page\"\n}"
         },
         "url": {
           "raw": "{{base_url}}/generateQuestions",
@@ -50,7 +50,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"inputs\": {\n    \"url\": \"https://example.com/article\",\n    \"query\": \"artificial intelligence business applications\",\n    \"tag_prompt\": \"Generate 5 concise topic tags\"\n  },\n  \"user\": \"{{user}}\"\n}"
+          "raw": "{\n  \"inputs\": {\n    \"url\": \"https://ai.mlyticsaigc.com/\",\n    \"query\": \"artificial intelligence business applications\",\n    \"tag_prompt\": \"Generate 5 concise topic tags\"\n  },\n  \"user\": \"{{user}}\"\n}"
         },
         "url": {
           "raw": "{{base_url}}/getMetadata",
@@ -71,7 +71,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"inputs\": {\n    \"query\": \"What are the key benefits of AI in business?\",\n    \"url\": \"https://example.com/article\",\n    \"lang\": \"zh-tw\"\n  },\n  \"user\": \"{{user}}\",\n  \"stream\": false\n}"
+          "raw": "{\n  \"inputs\": {\n    \"query\": \"What are the key benefits of AI in business?\",\n    \"url\": \"https://ai.mlyticsaigc.com/\",\n    \"lang\": \"zh-tw\"\n  },\n  \"user\": \"{{user}}\",\n  \"stream\": false\n}"
         },
         "url": {
           "raw": "{{base_url}}/getAnswer",
@@ -92,7 +92,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"inputs\": {\n    \"query\": \"What are the key benefits of AI in business?\",\n    \"url\": \"https://example.com/article\",\n    \"lang\": \"zh-tw\"\n  },\n  \"user\": \"{{user}}\",\n  \"stream\": true\n}"
+          "raw": "{\n  \"inputs\": {\n    \"query\": \"What are the key benefits of AI in business?\",\n    \"url\": \"https://ai.mlyticsaigc.com/\",\n    \"lang\": \"zh-tw\"\n  },\n  \"user\": \"{{user}}\",\n  \"stream\": true\n}"
         },
         "url": {
           "raw": "{{base_url}}/getAnswer",
@@ -105,7 +105,7 @@
   "variable": [
     {
       "key": "base_url",
-      "value": "http://localhost:8888",
+      "value": "https://beeriest-thermoduric-rachell.ngrok-free.dev",
       "type": "string"
     },
     {

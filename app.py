@@ -12,6 +12,7 @@ import logging
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from contextlib import asynccontextmanager
+from urllib.parse import unquote
 
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
@@ -108,10 +109,13 @@ def generate_uuid(key: str) -> str:
     return hashlib.sha256(key.encode()).hexdigest()
 
 def get_cache_key(endpoint: str, inputs: Dict, user: str = "") -> str:
-    """Generate cache key for endpoint"""
+    """Generate cache key for endpoint (sanitized for filesystem compatibility)"""
     key_parts = [endpoint, json.dumps(inputs, sort_keys=True), user]
     key = ":".join(key_parts)
-    return f"ai:{endpoint}:{hashlib.sha256(key.encode()).hexdigest()}"
+    # Use hash only to avoid invalid filesystem characters on Windows/Linux
+    hash_key = hashlib.sha256(key.encode()).hexdigest()
+    # Sanitize: replace colons with underscores for filesystem compatibility
+    return f"ai_{endpoint}_{hash_key}"
 
 # Endpoints
 
@@ -121,11 +125,25 @@ async def generate_questions(request: GenerateQuestionsRequest):
     Generate 1-5 structured questions from content or URL
     Matches existing Vext API contract
     """
+
     start_time = time.time()
-    
+
+    print("========================Generating Questions=========================")
+    print(request)
+    print("========================Received Request=========================")
+
+    print(request.inputs)
+    print("========================Inputs=========================")
+
     try:
         inputs = request.inputs
         
+        # Decode URL-encoded URLs
+        if inputs.url:
+            inputs.url = unquote(inputs.url)
+        if inputs.context:
+            inputs.context = unquote(inputs.context)
+
         # Validate input
         if not inputs.url and not inputs.context:
             raise HTTPException(
@@ -158,6 +176,7 @@ async def generate_questions(request: GenerateQuestionsRequest):
             content_text = await content_service.fetch_content(inputs.url)
         
         # Generate questions using Gemini
+
         questions_result = await gemini_service.generate_questions(
             content=content_text or "",
             lang=inputs.lang or "zh-tw",
@@ -188,13 +207,19 @@ async def generate_questions(request: GenerateQuestionsRequest):
         return JSONResponse(content=response)
         
     except ValueError as e:
-        # Location restriction or configuration error
+        # Location restriction, connection timeout, or configuration error
         error_msg = str(e)
         if "location is not supported" in error_msg.lower() or "region" in error_msg.lower():
             logger.error(f"Gemini API location restriction: {error_msg}")
             raise HTTPException(
                 status_code=503,
-                detail="Gemini API is not available in this region. Please use VPN or deploy to a supported region. For testing, use demo_mock_server.py instead."
+                detail="Gemini API is not available in this region. Please use VPN or deploy to a supported region."
+            )
+        elif "cannot connect" in error_msg.lower() or "connection" in error_msg.lower():
+            logger.error(f"Gemini API connection error: {error_msg}")
+            raise HTTPException(
+                status_code=503,
+                detail="Cannot connect to Gemini API. Please check your network connection, firewall settings, or use VPN if Google services are blocked in your region."
             )
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -212,8 +237,20 @@ async def get_metadata(request: GetMetadataRequest):
     """
     start_time = time.time()
     
+
+    print("========================Getting Metadata=========================")
+    print(request)
+    print("========================Received Request=========================")
+
+    print(request.inputs)
+    print("========================Inputs=========================")
+
     try:
         inputs = request.inputs
+        
+        # Decode URL-encoded URLs
+        if inputs.url:
+            inputs.url = unquote(inputs.url)
         
         if not inputs.url:
             raise HTTPException(
@@ -270,13 +307,19 @@ async def get_metadata(request: GetMetadataRequest):
         return JSONResponse(content=response)
         
     except ValueError as e:
-        # Location restriction or configuration error
+        # Location restriction, connection timeout, or configuration error
         error_msg = str(e)
         if "location is not supported" in error_msg.lower() or "region" in error_msg.lower():
             logger.error(f"Gemini API location restriction: {error_msg}")
             raise HTTPException(
                 status_code=503,
-                detail="Gemini API is not available in this region. Please use VPN or deploy to a supported region. For testing, use demo_mock_server.py instead."
+                detail="Gemini API is not available in this region. Please use VPN or deploy to a supported region."
+            )
+        elif "cannot connect" in error_msg.lower() or "connection" in error_msg.lower():
+            logger.error(f"Gemini API connection error: {error_msg}")
+            raise HTTPException(
+                status_code=503,
+                detail="Cannot connect to Gemini API. Please check your network connection, firewall settings, or use VPN if Google services are blocked in your region."
             )
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -297,6 +340,10 @@ async def get_answer(request: GetAnswerRequest):
     try:
         inputs = request.inputs
         
+        # Decode URL-encoded URLs
+        if inputs.url:
+            inputs.url = unquote(inputs.url)
+        
         # Validate input
         if not inputs.query:
             raise HTTPException(
@@ -310,7 +357,17 @@ async def get_answer(request: GetAnswerRequest):
             content_text = await content_service.get_content(inputs.content_id)
         elif inputs.url:
             content_text = await content_service.fetch_content(inputs.url)
-        
+
+        print("========================Getting Answer=========================")
+        print(content_text)
+        print("========================Content Text=========================")
+        print(inputs.query)
+        print("========================Query=========================")
+        print(inputs.prompt)
+        print("========================Prompt=========================")
+        print(inputs.lang)
+        print("========================Lang=========================")
+
         # Streaming response
         if request.stream:
             async def stream_answer():
@@ -324,6 +381,18 @@ async def get_answer(request: GetAnswerRequest):
                     
                     # Stream answer from Gemini
                     full_answer = ""
+
+
+                    print("========================Streaming Answer=========================")
+                    print(content_text)
+                    print("========================Content Text=========================")
+                    print(inputs.query)
+                    print("========================Query=========================")
+                    print(inputs.prompt)
+                    print("========================Prompt=========================")
+                    print(inputs.lang)
+                    print("========================Lang=========================")
+
                     async for chunk in gemini_service.stream_answer(
                         content=content_text,
                         question=inputs.query,
@@ -355,6 +424,11 @@ async def get_answer(request: GetAnswerRequest):
                             "cached": False
                         }
                     })
+
+                    print("========================Final Data=========================")
+                    print(final_data)
+                    print("========================Final Data End=========================")
+
                     yield f"event: workflow_finished\ndata: {final_data}\n\n"
                     
                 except Exception as e:
@@ -366,6 +440,17 @@ async def get_answer(request: GetAnswerRequest):
         
         # Non-streaming response
         else:
+
+
+            print("========================Non-Streaming Answer=========================")
+            print(content_text)
+            print("========================Content Text=========================")
+            print(inputs.query)
+            print("========================Query=========================")
+            print(inputs.prompt)
+            print("========================Prompt=========================")
+            print(inputs.lang)
+            print("========================Lang=========================")
             # Generate cache key
             cache_key = get_cache_key(
                 "answer",
@@ -415,13 +500,19 @@ async def get_answer(request: GetAnswerRequest):
             return JSONResponse(content=response)
             
     except ValueError as e:
-        # Location restriction or configuration error
+        # Location restriction, connection timeout, or configuration error
         error_msg = str(e)
         if "location is not supported" in error_msg.lower() or "region" in error_msg.lower():
             logger.error(f"Gemini API location restriction: {error_msg}")
             raise HTTPException(
                 status_code=503,
-                detail="Gemini API is not available in this region. Please use VPN or deploy to a supported region. For testing, use demo_mock_server.py instead."
+                detail="Gemini API is not available in this region. Please use VPN or deploy to a supported region."
+            )
+        elif "cannot connect" in error_msg.lower() or "connection" in error_msg.lower():
+            logger.error(f"Gemini API connection error: {error_msg}")
+            raise HTTPException(
+                status_code=503,
+                detail="Cannot connect to Gemini API. Please check your network connection, firewall settings, or use VPN if Google services are blocked in your region."
             )
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:

@@ -398,21 +398,60 @@ The server implements multi-tier caching:
 - Metadata: 1 hour
 - Answers: 5 minutes
 
-### Setting Up Redis
+### Setting Up Redis (Optional)
 
-**Using Docker:**
+Redis is **optional** - the API works fine with file cache. Redis provides faster caching and is recommended for production.
+
+**Option 1: Using Docker (Easiest - Recommended for Windows)**
+
+1. Install Docker Desktop if you haven't already: https://www.docker.com/products/docker-desktop
+
+2. Run Redis container:
 ```bash
-docker run -d -p 6379:6379 redis:latest
+docker run -d -p 6379:6379 --name redis redis:latest
 ```
 
-**Local Installation:**
-- macOS: `brew install redis && brew services start redis`
-- Ubuntu: `sudo apt-get install redis-server`
+3. Verify Redis is running:
+```bash
+docker ps
+```
 
-Then add to `.env`:
+**Option 2: Using Docker Compose (Already configured)**
+
+If you have `docker-compose.yml` in the project:
+```bash
+docker-compose up -d redis
+```
+
+**Option 3: Local Installation (Windows)**
+
+1. Download Redis for Windows:
+   - Option A: Use WSL2 (recommended): Install Redis in WSL2 Ubuntu
+   - Option B: Use Memurai (Redis-compatible for Windows): https://www.memurai.com/get-memurai
+   - Option C: Use Redis Stack Docker image
+
+2. For WSL2 (recommended):
+```bash
+# In WSL2 terminal
+sudo apt-get update
+sudo apt-get install redis-server
+sudo service redis-server start
+```
+
+**After Installation:**
+
+Add to your `.env` file:
 ```env
 REDIS_URL=redis://localhost:6379/0
 ```
+
+**Verify Redis is Working:**
+
+Restart your API server and check the logs. You should see:
+- `"Redis cache enabled and connected"` (if Redis is running)
+- `"Redis not available, using file cache only"` (if Redis is not running - this is fine, file cache works)
+
+**Note:** If Redis is not running, the API will automatically use file cache without errors.
 
 ## Deployment
 
@@ -597,6 +636,53 @@ print(response.json())
 
 - **Verify API contract**: Ensure request format matches examples
 - **Check Laravel integration**: Review `Laravel Integration` section above
+
+### Connection timeout to Gemini API
+
+If you see errors like `Connection timed out` or `failed to connect to all addresses`:
+
+**Symptoms:**
+- Error: `503 failed to connect to all addresses; last error: UNAVAILABLE: ipv4:142.250.69.170:443: ConnectEx: Connection timed out`
+- Error: `Timeout of 600.0s exceeded`
+- Error: `OPENSSL_internal:BAD_DECRYPT` (in Postman)
+
+**Solutions:**
+
+1. **Check network connectivity:**
+   ```bash
+   # Test if you can reach Google's servers
+   ping google.com
+   curl -I https://generativelanguage.googleapis.com
+   ```
+
+2. **Firewall/Antivirus:**
+   - Check if your firewall is blocking outbound connections to port 443
+   - Temporarily disable antivirus to test if it's blocking the connection
+   - Add Python/your terminal to firewall exceptions
+
+3. **Corporate network/Proxy:**
+   - If on corporate network, you may need to configure proxy settings
+   - Contact IT to allow outbound connections to `*.googleapis.com`
+
+4. **VPN/Regional restrictions:**
+   - Some regions block Google services - use a VPN connected to USA/Europe
+   - Verify VPN is working: `curl https://www.google.com`
+
+5. **Windows-specific (Postman SSL error):**
+   - The `OPENSSL_internal:BAD_DECRYPT` in Postman is often a network/firewall issue
+   - Try disabling SSL verification temporarily in Postman settings (Settings → SSL certificate verification: OFF) - **only for testing**
+   - Check Windows Firewall settings
+
+6. **Test connection manually:**
+   ```bash
+   # Test Gemini API directly
+   python -c "import google.generativeai as genai; genai.configure(api_key='YOUR_KEY'); model = genai.GenerativeModel('gemini-2.0-flash-exp'); print(model.generate_content('test').text)"
+   ```
+
+**Note:** If connection issues persist, you may need to:
+- Deploy the server to a cloud provider (AWS, GCP, Azure) in a supported region
+- Use a VPN service
+- Contact network administrator if on corporate network
 
 ## Error Handling
 
