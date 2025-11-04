@@ -50,7 +50,9 @@ Edit `.env` and add your Gemini API key (minimum required):
 
 ```env
 GEMINI_API_KEY=your_gemini_api_key_here
-GEMINI_MODEL=gemini-2.0-flash-exp
+# Optional: Change model for cost optimization
+# GEMINI_MODEL=gemini-1.5-flash-lite  # Cheapest for testing
+# GEMINI_MODEL=gemini-1.5-flash      # Recommended (default)
 ```
 
 See [Configuration](#configuration) section for all available options.
@@ -104,8 +106,14 @@ Edit `.env` file with your settings:
 # Google Gemini API Key (REQUIRED)
 GEMINI_API_KEY=your_gemini_api_key_here
 
-# Gemini model to use (optional, defaults to gemini-2.0-flash-exp)
-GEMINI_MODEL=gemini-2.0-flash-exp
+# Gemini model to use (optional, defaults to gemini-1.5-flash)
+# Recommended options:
+#   - gemini-1.5-flash-lite: Cheapest, fastest, good for testing (~$0.06 per 1000 requests)
+#   - gemini-1.5-flash: Best balance, recommended for production (~$0.09 per 1000 requests)
+#   - gemini-1.5-pro: Most capable, but 10x more expensive (~$1.50 per 1000 requests)
+#   - gemini-2.0-flash-exp: Latest experimental model (pricing may vary)
+# Note: Google offers free tier with 1,500 requests/day - great for testing!
+GEMINI_MODEL=gemini-1.5-flash
 ```
 
 ### Optional Configuration
@@ -676,7 +684,7 @@ If you see errors like `Connection timed out` or `failed to connect to all addre
 6. **Test connection manually:**
    ```bash
    # Test Gemini API directly
-   python -c "import google.generativeai as genai; genai.configure(api_key='YOUR_KEY'); model = genai.GenerativeModel('gemini-2.0-flash-exp'); print(model.generate_content('test').text)"
+   python -c "import google.generativeai as genai; genai.configure(api_key='YOUR_KEY'); model = genai.GenerativeModel('gemini-1.5-flash'); print(model.generate_content('test').text)"
    ```
 
 **Note:** If connection issues persist, you may need to:
