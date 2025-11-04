@@ -66,33 +66,34 @@ class GeminiService:
         
         # Build prompt - use custom prompt if provided, otherwise use default
         if custom_prompt and custom_prompt.strip():
-            # Use custom prompt as the main instruction
-            base_instruction = custom_prompt.strip()
-            # Add requirements for short questions if custom prompt is used
-            requirements = f"""Requirements:
-1. Follow the instruction: {base_instruction}
-2. Generate {max_questions} questions in {lang_prompt}
-3. Keep questions short and simple (under 20 words for Chinese, under 15 words for English)
-4. Return JSON format: {{"questions": [{{"id": "q1", "text": "Question text", "type": "fact|analysis|exploratory", "confidence": 0.0-1.0}}]}}"""
-        else:
-            # Default: Generate short, simple, direct questions (similar to Vext style)
-            base_instruction = f"Generate {max_questions} short, simple, direct questions in {lang_prompt}"
-            requirements = f"""Requirements:
-1. Questions must be short and simple (like: \"什麼是包冰？\" or \"Why does frozen shrimp have ice?\")
-2. Each question should be direct and easy to understand
-3. Avoid long, complex questions
-4. Return JSON format: {{"questions": [{{"id": "q1", "text": "Question text", "type": "fact|analysis|exploratory", "confidence": 0.0-1.0}}]}}"""
-        
-        prompt = f"""{base_instruction}
+            # Use custom prompt as the PRIMARY instruction (like Vext does)
+            # Let the custom prompt fully control the style - no extra constraints
+            prompt = f"""{custom_prompt.strip()}
 
 Content:
 {content[:5000]}
 
-{requirements}
+Generate {max_questions} questions in {lang_prompt}.
 
 {f'Previous questions to avoid: {", ".join(previous)}' if previous else ''}
 
-Generate questions now:"""
+Return JSON format: {{"questions": [{{"id": "q1", "text": "Question text", "type": "fact|analysis|exploratory", "confidence": 0.0-1.0}}]}}"""
+        else:
+            # Default: Generate short, simple, direct questions (similar to Vext style)
+            prompt = f"""Generate {max_questions} short, simple, direct questions in {lang_prompt}.
+
+Content:
+{content[:5000]}
+
+Requirements:
+1. Questions must be short and simple (like: \"什麼是包冰？\" or \"Why does frozen shrimp have ice?\")
+2. Each question should be direct and easy to understand
+3. Avoid long, complex questions
+4. Keep questions concise (under 20 words for Chinese, under 15 words for English)
+
+{f'Previous questions to avoid: {", ".join(previous)}' if previous else ''}
+
+Return JSON format: {{"questions": [{{"id": "q1", "text": "Question text", "type": "fact|analysis|exploratory", "confidence": 0.0-1.0}}]}}"""
         
         try:
             # Run synchronous Gemini API call in thread pool
