@@ -363,26 +363,49 @@ async def get_metadata(request: GetMetadataRequest):
             tag_prompt=inputs.tag_prompt
         )
         
-        # Build response matching existing format
+        # Calculate timestamps
+        created_at = int(start_time)
+        finished_at = int(time.time())
+        elapsed_time = time.time() - start_time
+        
+        # Generate task_id
+        task_id = str(uuid.uuid4())
+        
+        # Format tag (single string, not array)
+        tags_list = metadata_result.get("tags", [])
+        tag = ", ".join(tags_list) if tags_list else ""
+        
+        # Format images as nested JSON string
+        images_list = metadata_result.get("images", [])
+        images_json = json.dumps({"images": images_list}, ensure_ascii=False, indent=2)
+        images_output = [{"images": images_json}] if images_list else [{"images": json.dumps({"images": []}, ensure_ascii=False)}]
+        
+        # Format sources as nested JSON string with citations
+        sources_list = metadata_result.get("sources", [])
+        citations = [
+            {
+                "title": s.get("title", ""),
+                "url": s.get("url", ""),
+                "content": s.get("snippet", "")
+            }
+            for s in sources_list
+        ]
+        sources_json = json.dumps({"citations": citations}, ensure_ascii=False, indent=2)
+        sources_output = [{"sources": sources_json}] if citations else [{"sources": json.dumps({"citations": []}, ensure_ascii=False)}]
+        
+        # Build response matching Vext API format from spec
         response = {
-            "event": "workflow_finished",
+            "task_id": task_id,
             "data": {
+                "status": "succeeded",
                 "outputs": {
-                    "url": inputs.url,
-                    "domain": metadata_result.get("domain", ""),
-                    "title": metadata_result.get("title", ""),
-                    "summary": metadata_result.get("summary", ""),
-                    "sources": metadata_result.get("sources", []),
-                    "tags": metadata_result.get("tags", []),
-                    "images": metadata_result.get("images", [])
+                    "tag": tag,
+                    "images": images_output,
+                    "sources": sources_output
                 },
-                "provider": "gemini-2.5-flash",
-                "meta": {
-                    "tokens_used": metadata_result.get("tokens_used", 0),
-                    "latency_ms": int((time.time() - start_time) * 1000),
-                    "cached": False,
-                    "search_api_quota_used": metadata_result.get("search_quota", 0)
-                }
+                "elapsed_time": elapsed_time,
+                "created_at": created_at,
+                "finished_at": finished_at
             }
         }
         
@@ -532,19 +555,26 @@ async def get_answer(request: GetAnswerRequest):
                 max_tokens=800
             )
             
-            # Build response matching existing format
+            # Calculate timestamps
+            created_at = int(start_time)
+            finished_at = int(time.time())
+            elapsed_time = time.time() - start_time
+            
+            # Generate task_id
+            task_id = str(uuid.uuid4())
+            
+            # Build response matching Vext API format from spec
             response = {
                 "event": "workflow_finished",
+                "task_id": task_id,
                 "data": {
+                    "status": "succeeded",
                     "outputs": {
                         "result": answer_result.get("answer", "")
                     },
-                    "provider": "gemini-2.5-flash",
-                    "meta": {
-                        "tokens_used": answer_result.get("tokens_used", 0),
-                        "latency_ms": int((time.time() - start_time) * 1000),
-                        "cached": False
-                    }
+                    "elapsed_time": elapsed_time,
+                    "created_at": created_at,
+                    "finished_at": finished_at
                 }
             }
             

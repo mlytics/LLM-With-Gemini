@@ -293,38 +293,25 @@ Extract metadata (title, summary, tags, images) from URL. **Domain filtering:** 
 **Response:**
 ```json
 {
-  "event": "workflow_finished",
+  "task_id": "1f802502-0c9c-4733-87fb-0a2499af6cbb",
   "data": {
+    "status": "succeeded",
     "outputs": {
-      "url": "https://m.cnyes.com/news/id/5627491",
-      "domain": "cnyes.com",
-      "title": "天泓文創(08500)升逾40%,現報0.75元",
-      "summary": "天泓文創升40.2%,報0.75元,最高價0.75元,創52周新高...",
-      "sources": [
-        {
-          "title": "相關文章標題",
-          "url": "https://cnyes.com/related-article",
-          "snippet": "相關文章摘要...",
-          "score": 0.9
-        }
-      ],
-      "tags": ["港股", "異動股", "天泓文創", "股票", "金融"],
+      "tag": "港股, 異動股, 天泓文創, 股票, 金融",
       "images": [
         {
-          "url": "https://cnyes.com/image.jpg",
-          "width": 800,
-          "height": 600,
-          "type": "og:image"
+          "images": "{\n  \"images\": []\n}"
+        }
+      ],
+      "sources": [
+        {
+          "sources": "{\n  \"citations\": [\n    {\n      \"title\": \"相關文章標題\",\n      \"url\": \"https://cnyes.com/related-article\",\n      \"content\": \"相關文章摘要...\"\n    }\n  ]\n}"
         }
       ]
     },
-    "provider": "gemini-2.5-flash",
-    "meta": {
-      "tokens_used": 150,
-      "latency_ms": 500,
-      "cached": false,
-      "search_api_quota_used": 1
-    }
+    "elapsed_time": 2.41,
+    "created_at": 1761245271,
+    "finished_at": 1761245273
   }
 }
 ```
@@ -354,16 +341,15 @@ Generate answer with optional SSE streaming. Can use `content_id` from `/generat
 ```json
 {
   "event": "workflow_finished",
+  "task_id": "9737ff45-e015-4e2d-8505-c7525a655d50",
   "data": {
+    "status": "succeeded",
     "outputs": {
       "result": "Generated answer text..."
     },
-    "provider": "gemini-2.5-flash",
-    "meta": {
-      "tokens_used": 200,
-      "latency_ms": 800,
-      "cached": false
-    }
+    "elapsed_time": 3.709378,
+    "created_at": 1761248666,
+    "finished_at": 1761248670
   }
 }
 ```

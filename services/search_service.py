@@ -91,8 +91,10 @@ class SearchService:
             # Build sources list with domain filtering
             sources = []
             if query:
-                search_results = await self._google_search(query)
-                # Filter results to only include items from the same domain
+                # Add site: restriction to query (per spec: site:cnyes.com)
+                site_query = f"site:{domain} {query}"
+                search_results = await self._google_search(site_query)
+                # Additional domain filtering as safety check
                 filtered_results = []
                 for r in search_results:
                     result_url = r.get("link", "")
