@@ -25,6 +25,11 @@
           {
             "key": "Content-Type",
             "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{bearer_token}}",
+            "type": "text"
           }
         ],
         "body": {
@@ -46,6 +51,11 @@
           {
             "key": "Content-Type",
             "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{bearer_token}}",
+            "type": "text"
           }
         ],
         "body": {
@@ -67,6 +77,11 @@
           {
             "key": "Content-Type",
             "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{bearer_token}}",
+            "type": "text"
           }
         ],
         "body": {
@@ -88,6 +103,11 @@
           {
             "key": "Content-Type",
             "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{bearer_token}}",
+            "type": "text"
           }
         ],
         "body": {
@@ -105,12 +125,17 @@
   "variable": [
     {
       "key": "base_url",
-      "value": "https://beeriest-thermoduric-rachell.ngrok-free.dev",
+      "value": "https://YOUR-SERVICE-URL.a.run.app",
       "type": "string"
     },
     {
       "key": "user",
       "value": "test_user",
+      "type": "string"
+    },
+    {
+      "key": "bearer_token",
+      "value": "YOUR_BEARER_TOKEN",
       "type": "string"
     }
   ]

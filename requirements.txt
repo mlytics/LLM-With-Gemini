@@ -17,4 +17,7 @@ aiofiles
 
 # Testing dependencies (optional)
 requests
+pytest
+pytest-asyncio
+pytest-cov
 

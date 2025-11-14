@@ -55,28 +55,116 @@ Server starts on `http://localhost:8888`
 
 ### 4. Test
 
+#### Quick Health Check
 ```bash
-# Health check
 curl http://localhost:8888/health
+```
 
-# Generate questions
+#### Generate Questions (with URL)
+```bash
 curl -X POST http://localhost:8888/generateQuestions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer change_me" \
-  -d '{"inputs": {"url": "https://example.com", "lang": "zh-tw"}, "user": "test_user"}'
+  -d '{
+    "inputs": {
+      "url": "https://m.cnyes.com/news/id/5627491",
+      "lang": "zh-tw"
+    },
+    "user": "test_user",
+    "type": "answer_page"
+  }'
+```
 
-# Get metadata
+#### Generate Questions (with Context - Widget Page)
+```bash
+curl -X POST http://localhost:8888/generateQuestions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer change_me" \
+  -d '{
+    "inputs": {
+      "url": "",
+      "context": "A股港股《異動股》天泓文創(08500)升逾40%,現報0.75元...",
+      "prompt": "# 角色 你是鉅亨網（Cnyes.com）的資深金融新聞記者，擅長以市場節奏與專業語氣撰寫能引起投資人關注的「提問式標題」。\n# 任務 根據提供的文章，生成一個「標題式提問」。",
+      "lang": "zh-tw"
+    },
+    "user": "86b51fd1-5186-45c2-84f6-7977dd616119",
+    "type": "widget_page",
+    "source_url": "https://m.cnyes.com/news/id/5627491"
+  }'
+```
+
+#### Get Metadata (with Domain Filtering)
+```bash
 curl -X POST http://localhost:8888/getMetadata \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer change_me" \
-  -d '{"inputs": {"url": "https://example.com"}, "user": "test_user"}'
+  -d '{
+    "inputs": {
+      "url": "https://m.cnyes.com/news/id/5627491",
+      "query": "天泓文創 股票 異動",
+      "tag_prompt": "Generate 5 concise topic tags"
+    },
+    "user": "test_user"
+  }'
+```
 
-# Get answer
+#### Get Answer (with URL)
+```bash
 curl -X POST http://localhost:8888/getAnswer \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer change_me" \
-  -d '{"inputs": {"query": "What is this about?", "url": "https://example.com", "lang": "zh-tw"}, "user": "test_user", "stream": false}'
+  -d '{
+    "inputs": {
+      "query": "天泓文創股價為何飆升？",
+      "url": "https://m.cnyes.com/news/id/5627491",
+      "lang": "zh-tw"
+    },
+    "user": "test_user",
+    "stream": false
+  }'
 ```
+
+#### Get Answer (with Content ID - Session)
+```bash
+# First, generate questions to get content_id
+# Then use that content_id to get answer
+curl -X POST http://localhost:8888/getAnswer \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer change_me" \
+  -d '{
+    "inputs": {
+      "query": "天泓文創股價為何飆升？",
+      "content_id": "56e71457-c55d-4b13-bc8a-205cbdb42673",
+      "lang": "zh-tw"
+    },
+    "user": "test_user",
+    "stream": false
+  }'
+```
+
+#### Run Automated Tests
+```bash
+# Install test dependencies
+pip install -r requirements.txt
+
+# Run all tests (uses default test domain: https://m.cnyes.com/news/id/5627491)
+pytest tests/ -v
+
+# Run with custom test domain
+TEST_DOMAIN=https://your-test-domain.com/article pytest tests/ -v
+
+# Run specific test file
+pytest tests/test_output_format.py -v
+
+# Run with coverage
+pytest tests/ -v --cov=app --cov=services
+```
+
+**Test Configuration:**
+- `TEST_DOMAIN`: Test URL for API endpoints (default: `https://m.cnyes.com/news/id/5627491`)
+- `TEST_BASE_URL`: Base URL for domain extraction tests (default: `https://m.cnyes.com`)
+
+Set these in your `.env` file or export as environment variables before running tests.
 
 ## Configuration
 
@@ -98,6 +186,10 @@ LOG_LEVEL=INFO
 # Google Custom Search (optional - only for related sources)
 GOOGLE_SEARCH_KEY=
 GOOGLE_SEARCH_ENGINE_ID=
+
+# Test Configuration (optional - for running tests)
+TEST_DOMAIN=https://m.cnyes.com/news/id/5627491
+TEST_BASE_URL=https://m.cnyes.com
 ```
 
 ## Security
@@ -116,7 +208,10 @@ GOOGLE_SEARCH_ENGINE_ID=
 
 **Observability**: Cloud Run dashboard provides basic metrics and logs. Additional monitoring can be added as needed.
 
-**Testing**: Basic E2E testing planned with AIGC MVP PHP project. Human evaluation for content quality initially; automated evaluation (AI Agents) planned for future.
+**Testing**: 
+- **Automated tests**: Comprehensive unit and API tests covering schema validation, input/output format, URL/context precedence, and content_id session logic. Run with `pytest tests/ -v`
+- **Manual testing**: Postman collection available for E2E testing after deployment
+- **Human evaluation**: Content quality evaluation by team members
 
 ## Laravel Integration
 
@@ -142,45 +237,138 @@ Generate 1-5 questions from content or URL.
 ```json
 {
   "inputs": {
-    "url": "https://example.com/article",
-    "lang": "zh-tw"
+    "url": "https://m.cnyes.com/news/id/5627491",
+    "context": "Optional: direct content text",
+    "prompt": "Optional: custom prompt for question generation",
+    "lang": "zh-tw",
+    "previous_questions": ["Optional: list of previous questions"]
   },
-  "user": "uuid_user"
+  "user": "86b51fd1-5186-45c2-84f6-7977dd616119",
+  "type": "widget_page",
+  "source_url": "https://m.cnyes.com/news/id/5627491"
 }
 ```
+
+**Response:**
+```json
+{
+  "task_id": "1d779a47-b403-427f-b4b4-9120d9841175",
+  "data": {
+    "status": "succeeded",
+    "outputs": {
+      "result": {
+        "question_1": "天泓文創(08500)盤中飆升逾40%，創52周新高，背後有何催化劑？",
+        "question_2": "天泓文創股價放量創高，市場資金動向透露了什麼訊號？",
+        "question_3": "成交量與股價同步走高，這是否意味著天泓文創的上升趨勢將持續？",
+        "question_4": "55:45的主動買沽比率，如何解讀市場對天泓文創的看法？",
+        "question_5": "RSI飆升至83.58，天泓文創是否已進入超買區間？"
+      },
+      "content_id": "56e71457-c55d-4b13-bc8a-205cbdb42673"
+    },
+    "elapsed_time": 1.605955,
+    "created_at": 1761248073,
+    "finished_at": 1761248075
+  }
+}
+```
+
+**Note:** If both `url` and `context` are provided, `context` takes precedence. Empty string `url: ""` is treated as no URL.
 
 ### POST /getMetadata
 
-Extract metadata (title, summary, tags, images) from URL.
+Extract metadata (title, summary, tags, images) from URL. **Domain filtering:** Search results are automatically filtered to only include items from the same domain as the input URL.
 
 **Request:**
 ```json
 {
   "inputs": {
-    "url": "https://example.com/article"
+    "url": "https://m.cnyes.com/news/id/5627491",
+    "query": "天泓文創 股票 異動",
+    "tag_prompt": "Generate 5 concise topic tags"
   },
-  "user": "uuid_user"
+  "user": "test_user"
 }
 ```
 
+**Response:**
+```json
+{
+  "event": "workflow_finished",
+  "data": {
+    "outputs": {
+      "url": "https://m.cnyes.com/news/id/5627491",
+      "domain": "cnyes.com",
+      "title": "天泓文創(08500)升逾40%,現報0.75元",
+      "summary": "天泓文創升40.2%,報0.75元,最高價0.75元,創52周新高...",
+      "sources": [
+        {
+          "title": "相關文章標題",
+          "url": "https://cnyes.com/related-article",
+          "snippet": "相關文章摘要...",
+          "score": 0.9
+        }
+      ],
+      "tags": ["港股", "異動股", "天泓文創", "股票", "金融"],
+      "images": [
+        {
+          "url": "https://cnyes.com/image.jpg",
+          "width": 800,
+          "height": 600,
+          "type": "og:image"
+        }
+      ]
+    },
+    "provider": "gemini-2.5-flash",
+    "meta": {
+      "tokens_used": 150,
+      "latency_ms": 500,
+      "cached": false,
+      "search_api_quota_used": 1
+    }
+  }
+}
+```
+
+**Note:** Domain is normalized (e.g., `m.cnyes.com` → `cnyes.com`). All sources are filtered to match the extracted domain.
+
 ### POST /getAnswer
 
-Generate answer with optional SSE streaming.
+Generate answer with optional SSE streaming. Can use `content_id` from `/generateQuestions` to retrieve previously saved content.
 
 **Request:**
 ```json
 {
   "inputs": {
-    "query": "What is this about?",
-    "url": "https://example.com/article",
+    "query": "天泓文創股價為何飆升？",
+    "url": "https://m.cnyes.com/news/id/5627491",
+    "content_id": "56e71457-c55d-4b13-bc8a-205cbdb42673",
+    "prompt": "Optional: custom prompt",
     "lang": "zh-tw"
   },
-  "user": "uuid_user",
+  "user": "test_user",
   "stream": false
 }
 ```
 
-Set `"stream": true` for SSE streaming.
+**Response (non-streaming):**
+```json
+{
+  "event": "workflow_finished",
+  "data": {
+    "outputs": {
+      "result": "Generated answer text..."
+    },
+    "provider": "gemini-2.5-flash",
+    "meta": {
+      "tokens_used": 200,
+      "latency_ms": 800,
+      "cached": false
+    }
+  }
+}
+```
+
+**Note:** If `content_id` is provided, it retrieves content saved during `/generateQuestions`. Otherwise, it fetches from `url`. Set `"stream": true` for SSE streaming.
 
 
 

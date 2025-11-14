@@ -9,6 +9,7 @@ import json
 import hashlib
 import time
 import logging
+import uuid
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from contextlib import asynccontextmanager
@@ -187,6 +188,12 @@ async def generate_questions(request: GenerateQuestionsRequest):
     try:
         inputs = request.inputs
         
+        # Normalize empty strings to None for validation
+        if inputs.url == "":
+            inputs.url = None
+        if inputs.context == "":
+            inputs.context = None
+        
         # Decode URL-encoded URLs
         if inputs.url:
             inputs.url = unquote(inputs.url)
@@ -225,7 +232,6 @@ async def generate_questions(request: GenerateQuestionsRequest):
             content_text = await content_service.fetch_content(inputs.url)
         
         # Generate questions using Gemini
-
         questions_result = await gemini_service.generate_questions(
             content=content_text or "",
             lang=inputs.lang or "zh-tw",
@@ -234,20 +240,51 @@ async def generate_questions(request: GenerateQuestionsRequest):
             custom_prompt=inputs.prompt
         )
         
-        # Build response matching existing format
+        # Generate content_id if not provided
+        content_id = questions_result.get("content_id")
+        if not content_id:
+            # Generate content_id from context or URL
+            content_source = inputs.context or inputs.url or ""
+            if content_source:
+                content_id = await content_service.reserve_content_id_from_url(content_source)
+            else:
+                content_id = str(uuid.uuid4())
+        
+        # Save content with content_id for later retrieval
+        if content_text:
+            await content_service.save_content(content_id, content_text, inputs.url or request.source_url)
+        
+        # Convert questions array to object format (question_1, question_2, etc.)
+        questions_list = questions_result.get("questions", [])
+        questions_dict = {}
+        for i, question in enumerate(questions_list, 1):
+            # Extract question text - handle both dict and string formats
+            if isinstance(question, dict):
+                question_text = question.get("text", question.get("question", str(question)))
+            else:
+                question_text = str(question)
+            questions_dict[f"question_{i}"] = question_text
+        
+        # Calculate timestamps
+        created_at = int(start_time)
+        finished_at = int(time.time())
+        elapsed_time = time.time() - start_time
+        
+        # Generate task_id
+        task_id = str(uuid.uuid4())
+        
+        # Build response matching expected format
         response = {
-            "event": "workflow_finished",
+            "task_id": task_id,
             "data": {
+                "status": "succeeded",
                 "outputs": {
-                    "result": questions_result.get("questions", []),
-                    "content_id": questions_result.get("content_id"),
+                    "result": questions_dict,
+                    "content_id": content_id
                 },
-                "provider": "gemini-2.5-flash-lite",
-                "meta": {
-                    "tokens_used": questions_result.get("tokens_used", 0),
-                    "latency_ms": int((time.time() - start_time) * 1000),
-                    "cached": False
-                }
+                "elapsed_time": elapsed_time,
+                "created_at": created_at,
+                "finished_at": finished_at
             }
         }
         
@@ -272,6 +309,9 @@ async def generate_questions(request: GenerateQuestionsRequest):
                 detail="Cannot connect to Gemini API. Please check your network connection, firewall settings, or use VPN if Google services are blocked in your region."
             )
         raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        # Re-raise HTTPException (don't convert to 500)
+        raise
     except Exception as e:
         logger.error(f"Error generating questions: {str(e)}", exc_info=True)
         raise HTTPException(
@@ -367,6 +407,9 @@ async def get_metadata(request: GetMetadataRequest):
                 detail="Cannot connect to Gemini API. Please check your network connection, firewall settings, or use VPN if Google services are blocked in your region."
             )
         raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        # Re-raise HTTPException (don't convert to 500)
+        raise
     except Exception as e:
         logger.error(f"Error getting metadata: {str(e)}", exc_info=True)
         raise HTTPException(
@@ -526,6 +569,9 @@ async def get_answer(request: GetAnswerRequest):
                 detail="Cannot connect to Gemini API. Please check your network connection, firewall settings, or use VPN if Google services are blocked in your region."
             )
         raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        # Re-raise HTTPException (don't convert to 500)
+        raise
     except Exception as e:
         logger.error(f"Error getting answer: {str(e)}", exc_info=True)
         raise HTTPException(

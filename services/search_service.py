@@ -27,6 +27,32 @@ class SearchService:
             follow_redirects=True
         )
     
+    def _extract_domain(self, url: str) -> str:
+        """
+        Extract and normalize domain from URL
+        e.g., "m.cnyes.com" -> "cnyes.com", "www.cnyes.com" -> "cnyes.com"
+        
+        Args:
+            url: URL to extract domain from
+            
+        Returns:
+            Normalized domain string
+        """
+        parsed = urlparse(url)
+        domain = parsed.netloc.lower()
+        
+        # Remove www. prefix
+        if domain.startswith("www."):
+            domain = domain[4:]
+        
+        # Remove mobile subdomain (m., mobile., etc.)
+        if domain.startswith("m."):
+            domain = domain[2:]
+        elif domain.startswith("mobile."):
+            domain = domain[7:]
+        
+        return domain
+    
     async def get_metadata(
         self,
         url: str,
@@ -48,8 +74,8 @@ class SearchService:
             # Fetch and parse content
             content_data = await self._fetch_and_parse(url)
             
-            # Extract metadata
-            domain = urlparse(url).netloc
+            # Extract and normalize domain
+            domain = self._extract_domain(url)
             title = content_data.get("title", "")
             summary = content_data.get("summary", "")
             images = content_data.get("images", [])
@@ -62,10 +88,19 @@ class SearchService:
                     tag_prompt=tag_prompt
                 )
             
-            # Build sources list (can be enhanced with actual search results)
+            # Build sources list with domain filtering
             sources = []
             if query:
                 search_results = await self._google_search(query)
+                # Filter results to only include items from the same domain
+                filtered_results = []
+                for r in search_results:
+                    result_url = r.get("link", "")
+                    if result_url:
+                        result_domain = self._extract_domain(result_url)
+                        if result_domain == domain:
+                            filtered_results.append(r)
+                
                 sources = [
                     {
                         "title": r.get("title", ""),
@@ -73,7 +108,7 @@ class SearchService:
                         "snippet": r.get("snippet", ""),
                         "score": 0.9 - (i * 0.1)  # Decreasing score
                     }
-                    for i, r in enumerate(search_results[:5])
+                    for i, r in enumerate(filtered_results[:5])
                 ]
             
             return {
@@ -90,7 +125,7 @@ class SearchService:
         except Exception as e:
             logger.error(f"Error getting metadata: {str(e)}", exc_info=True)
             # Return minimal metadata
-            domain = urlparse(url).netloc
+            domain = self._extract_domain(url) if url else ""
             return {
                 "domain": domain,
                 "title": "",
